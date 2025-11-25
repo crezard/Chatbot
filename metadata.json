@@ -1,0 +1,5 @@
+{
+  "name": "Chatbot",
+  "description": "A smart English grammar assistant that corrects mistakes and explains them in Korean.",
+  "requestFramePermissions": []
+}
