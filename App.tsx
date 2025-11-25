@@ -5,17 +5,45 @@ import ChatMessage from './components/ChatMessage';
 import InputArea from './components/InputArea';
 import { INITIAL_GREETING } from './constants';
 
+const STORAGE_KEY = 'grammar_galaxy_history';
+
 const App: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isRestored, setIsRestored] = useState(false);
+
+  // Load from LocalStorage on mount
+  useEffect(() => {
+    const savedMessages = localStorage.getItem(STORAGE_KEY);
+    if (savedMessages) {
+      try {
+        const parsed = JSON.parse(savedMessages);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(parsed);
+          setIsRestored(true);
+          return;
+        }
+      } catch (e) {
+        console.error("Failed to restore history", e);
+      }
+    }
+    
+    // Default initialization if no history
+    setMessages([{
       id: 'init-1',
       text: INITIAL_GREETING,
       sender: Sender.Bot,
       timestamp: Date.now(),
-    },
-  ]);
-  const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+    }]);
+  }, []);
+
+  // Save to LocalStorage on change
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    }
+  }, [messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -23,11 +51,12 @@ const App: React.FC = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isLoading]);
+  }, [messages, isLoading, isRestored]);
 
   const handleSendMessage = async (text: string) => {
+    // Generate simple ID without external uuid library to prevent build errors
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: `user-${Date.now()}`,
       text: text,
       sender: Sender.User,
       timestamp: Date.now(),
@@ -40,7 +69,7 @@ const App: React.FC = () => {
       const responseText = await sendMessageToGemini(text);
       
       const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: `bot-${Date.now()}`,
         text: responseText,
         sender: Sender.Bot,
         timestamp: Date.now(),
@@ -49,7 +78,7 @@ const App: React.FC = () => {
       setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
       const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: `error-${Date.now()}`,
         text: "통신 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
         sender: Sender.Bot,
         timestamp: Date.now(),
@@ -61,56 +90,79 @@ const App: React.FC = () => {
   };
 
   const handleReset = () => {
-    if (confirm("탐험 기록을 초기화 하시겠습니까?")) {
+    // Standard confirm dialog
+    if (window.confirm("새로운 임무를 시작하시겠습니까?\n이전 탐험 기록은 삭제됩니다.")) {
         resetSession();
+        localStorage.removeItem(STORAGE_KEY);
         setMessages([
             {
-              id: Date.now().toString(),
+              id: `init-${Date.now()}`,
               text: INITIAL_GREETING,
               sender: Sender.Bot,
               timestamp: Date.now(),
             },
         ]);
+        setIsRestored(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 text-slate-900 font-sans">
+    <div className="flex flex-col h-screen bg-slate-900 text-slate-100 font-sans selection:bg-indigo-500 selection:text-white">
+      {/* Background Stars Effect (Simple CSS) */}
+      <div className="fixed inset-0 z-0 opacity-20 pointer-events-none" 
+           style={{ backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)', backgroundSize: '30px 30px' }}>
+      </div>
+
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
+      <header className="fixed top-0 left-0 right-0 z-10 bg-slate-900/90 backdrop-blur-md border-b border-indigo-900/50 shadow-lg shadow-indigo-500/10">
         <div className="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-indigo-200 shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-indigo-500/50 shadow-lg border border-white/20">
+                <span className="text-xl">🚀</span>
             </div>
-            <h1 className="text-lg sm:text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600 truncate">
-              Grammar Galaxy: 8품사 탐험대
+            <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight">
+              Grammar Galaxy
+              <span className="hidden sm:inline-block ml-2 text-xs font-normal text-indigo-300 px-2 py-0.5 rounded-full bg-indigo-900/50 border border-indigo-700">
+                8품사 탐험대
+              </span>
             </h1>
           </div>
           <button 
             onClick={handleReset}
-            className="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors flex items-center gap-1"
+            className="group flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 hover:bg-indigo-600 hover:border-indigo-500 hover:text-white transition-all duration-200 text-sm font-medium text-slate-300"
+            title="Start New Mission"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-            Reset
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:rotate-180 transition-transform duration-300"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <span className="hidden sm:inline">New Mission</span>
           </button>
         </div>
       </header>
 
       {/* Main Chat Area */}
-      <main className="flex-1 overflow-y-auto pt-20 pb-32 px-4 sm:px-6">
+      <main className="flex-1 overflow-y-auto pt-20 pb-32 px-4 sm:px-6 relative z-1">
         <div className="max-w-3xl mx-auto space-y-6">
+          {/* Restoration Notice */}
+          {isRestored && (
+            <div className="text-center py-2 animate-fade-in-down">
+              <span className="text-xs font-mono text-indigo-400 bg-indigo-950/50 px-3 py-1 rounded-full border border-indigo-900 shadow-sm">
+                ✨ 이전 탐험 기록을 복구했습니다
+              </span>
+            </div>
+          )}
+
           {messages.map((msg) => (
             <ChatMessage key={msg.id} message={msg} />
           ))}
           
           {isLoading && (
-             <div className="flex justify-start w-full animate-pulse">
-                <div className="bg-white border border-slate-100 rounded-2xl rounded-bl-none px-5 py-4 shadow-md flex gap-2 items-center">
-                    <div className="text-xs text-indigo-400 font-medium mr-1">ANALYZING</div>
-                    <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+             <div className="flex justify-start w-full animate-fade-in">
+                <div className="bg-slate-800 border border-slate-700 rounded-2xl rounded-bl-none px-5 py-4 shadow-lg flex gap-2 items-center">
+                    <span className="text-xs text-indigo-400 font-medium mr-2 tracking-wider">ANALYZING</span>
+                    <div className="flex gap-1">
+                      <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                      <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                      <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                    </div>
                 </div>
             </div>
           )}
