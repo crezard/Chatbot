@@ -54,7 +54,6 @@ const App: React.FC = () => {
   }, [messages, isLoading, isRestored]);
 
   const handleSendMessage = async (text: string) => {
-    // Generate simple ID without external uuid library to prevent build errors
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       text: text,
@@ -90,7 +89,6 @@ const App: React.FC = () => {
   };
 
   const handleReset = () => {
-    // Standard confirm dialog
     if (window.confirm("새로운 임무를 시작하시겠습니까?\n이전 탐험 기록은 삭제됩니다.")) {
         resetSession();
         localStorage.removeItem(STORAGE_KEY);
@@ -108,7 +106,7 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-slate-900 text-slate-100 font-sans selection:bg-indigo-500 selection:text-white">
-      {/* Background Stars Effect (Simple CSS) */}
+      {/* Background Stars Effect */}
       <div className="fixed inset-0 z-0 opacity-20 pointer-events-none" 
            style={{ backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)', backgroundSize: '30px 30px' }}>
       </div>
@@ -141,7 +139,6 @@ const App: React.FC = () => {
       {/* Main Chat Area */}
       <main className="flex-1 overflow-y-auto pt-20 pb-32 px-4 sm:px-6 relative z-1">
         <div className="max-w-3xl mx-auto space-y-6">
-          {/* Restoration Notice */}
           {isRestored && (
             <div className="text-center py-2 animate-fade-in-down">
               <span className="text-xs font-mono text-indigo-400 bg-indigo-950/50 px-3 py-1 rounded-full border border-indigo-900 shadow-sm">
@@ -171,7 +168,6 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Input Area */}
       <InputArea onSendMessage={handleSendMessage} isLoading={isLoading} />
     </div>
   );
