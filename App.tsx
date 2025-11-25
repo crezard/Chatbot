@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Message, Sender } from './types';
-import { sendMessageToGemini, resetSession } from './services/geminiService';
+import { sendMessageToGemini, resetSession, checkConnection } from './services/geminiService';
 import ChatMessage from './components/ChatMessage';
 import InputArea from './components/InputArea';
 import { INITIAL_GREETING } from './constants';
@@ -12,6 +12,13 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isRestored, setIsRestored] = useState(false);
+  const [hasKey, setHasKey] = useState<boolean>(true); // Assume true initially to prevent flicker
+
+  // Check connection on mount
+  useEffect(() => {
+    const connected = checkConnection();
+    setHasKey(connected);
+  }, []);
 
   // Load from LocalStorage on mount
   useEffect(() => {
@@ -103,6 +110,43 @@ const App: React.FC = () => {
         setIsRestored(false);
     }
   };
+
+  // 🚨 CRITICAL ALERT SCREEN IF KEY IS MISSING
+  if (!hasKey) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-slate-900 text-slate-100 p-6">
+         <div className="max-w-lg w-full bg-red-950/30 border border-red-500/50 rounded-2xl p-8 shadow-2xl backdrop-blur-sm text-center">
+            <div className="text-5xl mb-6">⚠️</div>
+            <h1 className="text-2xl font-bold text-red-400 mb-4">통신 시스템 오프라인</h1>
+            <p className="text-slate-300 mb-6 leading-relaxed">
+              API 키가 감지되지 않아 Grammar Galaxy에 접속할 수 없습니다.<br/>
+              Vercel 배포 환경 변수가 올바르게 설정되지 않았습니다.
+            </p>
+            
+            <div className="bg-black/40 rounded-lg p-4 text-left text-sm font-mono text-indigo-300 mb-6 border border-white/10 overflow-x-auto">
+              <p className="mb-2 text-slate-400">// Vercel 설정에서 Key 이름을 아래 중 하나로 변경하세요:</p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>VITE_VAIT_API_KEY <span className="text-green-400">(추천)</span></li>
+                <li>NEXT_PUBLIC_VAIT_API_KEY</li>
+                <li>REACT_APP_VAIT_API_KEY</li>
+              </ul>
+            </div>
+
+            <div className="bg-indigo-900/40 p-3 rounded-lg text-sm text-indigo-200 mb-6">
+              💡 <strong>Tip:</strong> 변수 추가/변경 후에는 반드시 
+              <span className="font-bold underline ml-1">Redeploy (재배포)</span>를 해야 적용됩니다.
+            </div>
+
+            <button 
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+            >
+              설정 완료 후 새로고침
+            </button>
+         </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-slate-900 text-slate-100 font-sans selection:bg-indigo-500 selection:text-white">

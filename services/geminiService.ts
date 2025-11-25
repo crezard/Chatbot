@@ -4,7 +4,7 @@ import { MODEL_NAME, SYSTEM_INSTRUCTION } from "../constants";
 let aiInstance: GoogleGenAI | null = null;
 let chatSession: Chat | null = null;
 
-// Helper to safely access environment variables in various environments (Vite, Next.js, Node, etc.)
+// Helper to safely access environment variables in various environments
 const getEnvVar = (key: string): string | undefined => {
   // 1. Try import.meta.env (Vite standard)
   try {
@@ -13,52 +13,57 @@ const getEnvVar = (key: string): string | undefined => {
       // @ts-ignore
       return import.meta.env[key];
     }
-  } catch (e) {
-    // Ignore errors accessing import.meta
-  }
+  } catch (e) { /* ignore */ }
 
-  // 2. Try process.env (Node/Webpack standard) - Safely check for process existence first
+  // 2. Try process.env (Node/Webpack/Next.js/CRA standard)
   try {
     // @ts-ignore
     if (typeof process !== 'undefined' && process.env && process.env[key]) {
       // @ts-ignore
       return process.env[key];
     }
-  } catch (e) {
-    // Ignore errors accessing process
-  }
+  } catch (e) { /* ignore */ }
 
   return undefined;
 };
 
 const getApiKey = (): string => {
-  // Try to find the API Key in various common locations.
-  // Order matters: Check specific VITE_ keys first as they are required for client-side bundles.
+  // Check ALL possible prefixes for different frameworks
   const keysToCheck = [
-    "VITE_VAIT_API_KEY",    // Preferred for this project
-    "VITE_API_KEY",         // Standard Vite
-    "VAIT_API_KEY",         // User specified (might work if backend-injected)
-    "API_KEY"               // Standard fallback
+    "VITE_VAIT_API_KEY",        // Vite (Preferred)
+    "NEXT_PUBLIC_VAIT_API_KEY", // Next.js
+    "REACT_APP_VAIT_API_KEY",   // Create React App
+    "VAIT_API_KEY",             // Fallback
+    "VITE_API_KEY",             // Generic Vite
+    "API_KEY"                   // Generic Fallback
   ];
+
+  console.log("[GeminiService] Checking environment variables...");
 
   for (const keyName of keysToCheck) {
     const value = getEnvVar(keyName);
     if (value && value.trim() !== "") {
       // Clean the key (remove quotes if present)
       const cleanKey = value.trim().replace(/^["']|["']$/g, '');
-      console.log(`[GeminiService] Key found: ${keyName} (Length: ${cleanKey.length})`);
+      console.log(`[GeminiService] ✅ Success! Found key in: ${keyName}`);
       return cleanKey;
     }
   }
   
-  console.warn("[GeminiService] No API Key found in environment variables.");
+  console.warn("[GeminiService] ❌ Failed to find any API Key.");
   return "";
+};
+
+// Check if a valid key exists (for UI warning)
+export const checkConnection = (): boolean => {
+    const key = getApiKey();
+    return !!key && key.length > 0;
 };
 
 const getAIClient = (): GoogleGenAI => {
   if (!aiInstance) {
     const apiKey = getApiKey();
-    // We initialize with what we have; if empty, it will fail gracefully during calls
+    // Initialize even if empty to allow error handling downstream
     aiInstance = new GoogleGenAI({ apiKey });
   }
   return aiInstance;
@@ -82,7 +87,17 @@ export const sendMessageToGemini = async (message: string): Promise<string> => {
   const apiKey = getApiKey();
   
   if (!apiKey) {
-    return `⚠️ **시스템 경고: API 키 누락**\n\n통신 키(API Key)가 감지되지 않았습니다.\n\n**해결 방법:**\n1. Vercel 설정 > Environment Variables로 이동하세요.\n2. **\`VITE_VAIT_API_KEY\`** 라는 이름으로 키를 추가하세요.\n3. **Deployments** 탭에서 최신 배포의 **Redeploy** 버튼을 눌러야 적용됩니다.\n\n(참고: 브라우저 환경에서는 보안상 \`VITE_\` 접두사가 필수입니다.)`;
+    return `⚠️ **CRITICAL ERROR: API KEY MISSING**
+
+우주 통신망 키(API Key)를 찾을 수 없습니다. Vercel 설정을 확인해주세요.
+
+**해결 방법 (Step-by-Step):**
+1. **Vercel Dashboard** > Project Settings > **Environment Variables**
+2. 다음 이름 중 하나로 키를 추가하세요 (이미 있다면 철자를 확인하세요):
+   - \`VITE_VAIT_API_KEY\` (권장)
+   - \`NEXT_PUBLIC_VAIT_API_KEY\`
+   - \`REACT_APP_VAIT_API_KEY\`
+3. **중요:** 변경 후 **Deployments** 탭에서 최신 배포의 **Redeploy**를 꼭 눌러야 합니다.`;
   }
 
   try {
@@ -91,29 +106,22 @@ export const sendMessageToGemini = async (message: string): Promise<string> => {
       message: message,
     });
     
-    return result.text || "통신 신호가 약합니다. 응답을 해독할 수 없습니다. 다시 시도해 주세요.";
+    return result.text || "통신 신호가 약합니다. 응답을 해독할 수 없습니다.";
   } catch (error: any) {
     console.error("Gemini API Error:", error);
-    chatSession = null; // Reset session to force reconnection next time
+    chatSession = null; // Reset session
     
     const errorMsg = error.toString().toLowerCase();
-    const rawError = error.message || error.toString();
     
-    // Check for specific error types
-    if (errorMsg.includes("403") || errorMsg.includes("key") || errorMsg.includes("unauthenticated")) {
-       return `🚫 **인증 오류**: 설정된 API 키가 유효하지 않거나 권한이 없습니다.\n\n**설정된 변수명**: \`VITE_VAIT_API_KEY\` (또는 유사)\n**에러 내용**: ${rawError}\n\n키 값을 다시 확인하고 재배포해 주세요.`;
-    }
-
-    if (errorMsg.includes("400") || errorMsg.includes("invalid argument")) {
-        return `⚠️ **요청 오류**: 잘못된 요청입니다.\n\n**에러 내용**: ${rawError}`;
+    if (errorMsg.includes("403") || errorMsg.includes("key")) {
+       return `🚫 **API 키 권한 오류**\n\n설정된 API 키가 유효하지 않거나 Google AI Studio에서 해당 프로젝트의 결제 계정이 연결되지 않았을 수 있습니다.\n\n(참고: Gemini 1.5/2.5 모델은 무료 티어라도 API 키 설정이 필요합니다.)`;
     }
 
     if (errorMsg.includes("fetch") || errorMsg.includes("network")) {
-        return `📡 **네트워크 오류**: Google 서버에 연결할 수 없습니다.\n\n인터넷 연결을 확인하거나, 잠시 후 다시 시도해 주세요.`;
+        return `📡 **네트워크 연결 실패**\n\nGoogle 서버에 도달할 수 없습니다. 인터넷 연결을 확인해주세요.`;
     }
 
-    // Generic error
-    return `💥 **통신 오류 발생**\n\n우주 통신망에 일시적인 장애가 있습니다.\n\n**에러 상세 내용:**\n\`${rawError}\`\n\n잠시 후 다시 시도해 주세요.`;
+    return `💥 **통신 오류**\n\n오류 내용: ${error.message || error.toString()}\n잠시 후 다시 시도해 주세요.`;
   }
 };
 
