@@ -21,6 +21,9 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage, isLoading }) => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Prevent submission while composing IME characters (essential for Korean)
+    if (e.nativeEvent.isComposing) return;
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();

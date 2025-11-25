@@ -2,9 +2,9 @@ import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
 import { MODEL_NAME, SYSTEM_INSTRUCTION } from "../constants";
 
 // Ensure API key is present
-const apiKey = process.env.API_KEY;
+const apiKey = process.env.VAIT_API_KEY;
 if (!apiKey) {
-  console.error("API_KEY is missing from environment variables.");
+  console.error("VAIT_API_KEY is missing from environment variables.");
 }
 
 const ai = new GoogleGenAI({ apiKey: apiKey || "" });
