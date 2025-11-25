@@ -50,7 +50,7 @@ const App: React.FC = () => {
     } catch (error) {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+        text: "통신 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
         sender: Sender.Bot,
         timestamp: Date.now(),
       };
@@ -61,7 +61,7 @@ const App: React.FC = () => {
   };
 
   const handleReset = () => {
-    if (confirm("대화 내용을 초기화 하시겠습니까?")) {
+    if (confirm("탐험 기록을 초기화 하시겠습니까?")) {
         resetSession();
         setMessages([
             {
@@ -80,17 +80,18 @@ const App: React.FC = () => {
       <header className="fixed top-0 left-0 right-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
         <div className="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-indigo-200 shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
             </div>
-            <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600">
-              Grammar Guru
+            <h1 className="text-lg sm:text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600 truncate">
+              Grammar Galaxy: 8품사 탐험대
             </h1>
           </div>
           <button 
             onClick={handleReset}
-            className="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors"
+            className="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors flex items-center gap-1"
           >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
             Reset
           </button>
         </div>
@@ -106,9 +107,10 @@ const App: React.FC = () => {
           {isLoading && (
              <div className="flex justify-start w-full animate-pulse">
                 <div className="bg-white border border-slate-100 rounded-2xl rounded-bl-none px-5 py-4 shadow-md flex gap-2 items-center">
-                    <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                    <div className="text-xs text-indigo-400 font-medium mr-1">ANALYZING</div>
+                    <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                 </div>
             </div>
           )}
